@@ -1,0 +1,108 @@
+#!/bin/bash
+# Copyright (c) 2011 Gregor Richards
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+# Environment variables:
+# PanDebian directories
+PANDEBIANS=""
+# Shareable directories
+SHAREABLE=""
+
+msg() {
+    zenity --info --text="$*"
+}
+
+warning() {
+    zenity --warning --text="$*"
+}
+
+die() {
+    zenity --error --text="$*"
+    exit 1
+}
+
+question() {
+    zenity --question --text="$1" --ok-label="$2" --cancel-label="$3"
+    return $?
+}
+
+entry() {
+    zenity --entry --text="$1" --entry-text="$2"
+}
+
+list() {
+    MSG="$1"
+    shift
+    zenity --list --text="$MSG" --column= "$@"
+}
+
+save() {
+    zenity --file-selection --save
+}
+
+savedir() {
+    ( cd "$1"; zenity --file-selection --directory )
+}
+
+
+# Figure out the pandebian and shareable directories
+for mnt in `cut -d' ' -f 2 /proc/mounts`
+do
+    if [ -e "$mnt/etc/debian_version" ]
+    then
+        # Seems to be Debian
+        PANDEBIANS="$PANDEBIANS $mnt"
+
+    elif expr "$mnt" : '/media/[^/]*$' > /dev/null 2> /dev/null
+    then
+        if [ "$mnt" != "/media/ram" ]
+        then
+            # Probably reasonable to share
+            SHAREABLE="$SHAREABLE $mnt"
+        fi
+
+    fi
+done
+
+if [ ! "$PANDEBIANS" ]
+then
+    die 'I couldn'\''t find PanDebian. Please make sure you mount a PanDebian installation before using PanDebian Share.'
+fi
+
+if [ ! "$SHAREABLE" ]
+then
+    die 'I couldn'\''t find any shareable mounts. Sorry!'
+fi
+
+SHARE=`list 'Which mount would you like to share?' $SHAREABLE`
+
+if [ ! "$SHARE" ]
+then
+    exit
+fi
+
+# Then share it
+for mnt in $PANDEBIANS
+do
+    mkdir -p "$mnt$SHARE" || warning 'Failed to create '"$mnt/$SHARE"
+    mount --bind "$SHARE" "$mnt$SHARE" || warning 'Failed to bind '"$SHARE"' to '"$mnt/$SHARE"
+done
+
+msg 'Done. '"$SHARE"' should now be accessible within PanDebian.'

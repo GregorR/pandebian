@@ -1,0 +1,8 @@
+#!/bin/sh
+if [ ! "$XAUTHORITY" ]
+then
+    XAUTHORITY="$HOME/.Xauthority"
+    export XAUTHORITY
+fi
+
+exec gksudo ./pandebian-share

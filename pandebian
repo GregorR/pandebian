@@ -1,0 +1,375 @@
+#!/bin/bash
+# Copyright (c) 2011 Gregor Richards
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+if [ "$3" ]
+then
+    PRESUUSER="$1"
+    PRESUUID="$2"
+    PRESUGID="$3"
+else
+    PRESUUSER="$USER"
+    PRESUUID=`id -u`
+    PRESUGID=`id -g`
+fi
+
+# Environment variables:
+# Directory of pandebian itself (here)
+PDDIR=`pwd`
+# Loopback?
+LB=
+# (LB only) Loopback file
+LBFILE=
+# (LB only) Size of loopback file
+SIZE=
+# Filesystem label
+FSLABEL=
+# Root directory of the card PanDebian is installed on
+CARDDIR=
+# Root to install PanDebian to
+PDROOT=
+# Debian version
+DEBVERSION=
+# Updating?
+UPDATE=no
+
+
+msg() {
+    zenity --info --text="$*"
+}
+
+warning() {
+    zenity --warning --text="$*"
+}
+
+die() {
+    zenity --error --text="$*"
+    exit 1
+}
+
+question() {
+    zenity --question --text="$1" --ok-label="$2" --cancel-label="$3"
+    return $?
+}
+
+entry() {
+    zenity --entry --text="$1" --entry-text="$2"
+}
+
+list() {
+    MSG="$1"
+    shift
+    zenity --list --text="$MSG" --column= "$@"
+}
+
+save() {
+    zenity --file-selection --save
+}
+
+savedir() {
+    ( cd "$1"; zenity --file-selection --directory )
+}
+
+
+msg 'Welcome to PanDebian. This system will assist you in installing or updating a Debian chroot on your Pandora.'
+
+# Loopback or direct?
+LBD=`list 'Do you want to create a loopback file (a large file that will contain the Debian filesystem),
+or install directly to a card?' Loopback Direct`
+
+LB=
+
+if [ "$LBD" = "" ]
+then
+    exit
+elif [ "$LBD" = "Loopback" ]
+then
+    LB=yes
+fi
+
+while true
+do
+    # Choose the card
+    CARDDIR=""
+    while [ "$CARDDIR" = "" ]
+    do
+        msg 'Please choose the /card/ you wish to put the loopback file or filesystem on.'
+        CARDDIR=`savedir /media`
+        if [ "$CARDDIR" = "" ] ; then exit ; fi
+        if ! expr "$CARDDIR" : '/media/[^/]*$' > /dev/null 2> /dev/null
+        then
+            warning 'That does not appear to be the root directory of a card.'
+            CARDDIR=""
+        fi
+    done
+    
+    # Reformat?
+    if [ ! "$LB" ]
+    then
+        DEV=`grep '^[^ ]* '"$CARDDIR"' ' /proc/mounts | cut -d' ' -f 1`
+
+        question 'Do you wish to reformat the card ('"$DEV"')?' 'Yes' 'No'
+        if [ "$?" = "0" ]
+        then
+            question 'Are you sure? ('"$DEV"')' 'Yes' 'No'
+            if [ "$?" = "0" ]
+            then
+                umount $DEV || die 'Failed to unmount '"$DEV"
+
+                FSLABEL=`entry 'Choose the label for the filesystem.' 'PanDebian'`
+
+                msg 'Creating the filesystem, please wait ...' &
+                /sbin/mkfs.ext3 -L "$FSLABEL" "$DEV" || die 'Failed to create the filesystem on '"$DEV"
+                sync
+                kill %1
+
+                msg 'Please remove and reinsert the card, wait a few moments for it to remount, then continue. If that doesn'\''t work, reboot.'
+            else
+                break
+            fi
+        else
+            break
+        fi
+    else
+        break
+    fi
+done
+cd "$CARDDIR" || die 'Failed to cd to '"$CARDDIR"
+
+# If loopback ...
+if [ "$LB" ]
+then
+    msg 'Please choose a location and name for the loopback file. Must be within the selected card.'
+    LBFILE=`save`
+    if [ "$LBFILE" = "" ] ; then exit ; fi
+
+    if [ -e "$LBFILE" ]
+    then
+        UPDATE=yes
+        msg 'Loopback file already exists, updating.'
+        FSLABEL=`/sbin/blkid -s LABEL -o value "$LBFILE"`
+        if [ "$FSLABEL" = "" ]
+        then
+            die 'Could not determine '"$LBFILE"\''s filesystem label.'
+        fi
+
+    else
+        SIZE=`entry 'Choose the size (in MiB) for the loopback file' '2048'`
+    
+        x-terminal-emulator -e "$PDDIR/chksize" "$LBFILE" &
+        dd if=/dev/zero of="$LBFILE" bs=1M count="$SIZE" || die 'Failed to create '"$LBFILE"
+        kill %1
+    
+        FSLABEL=`entry 'Choose the label for the filesystem.' 'PanDebian'`
+    
+        msg 'Creating the filesystem, please wait ...' &
+        /sbin/mkfs.ext3 -F -L "$FSLABEL" "$LBFILE" || die 'Failed to create the filesystem on '"$LBFILE"
+        kill %1
+
+    fi
+
+    PDROOT="/media/ram/$FSLABEL"
+    mkdir -p "$PDROOT" || die 'Failed to create '"$PDROOT"
+
+    mount -o loop,noatime "$LBFILE" "$PDROOT" || die 'Failed to mount '"$PDROOT"
+
+else
+
+    mount -o remount,suid,dev "$CARDDIR" || die 'Failed to remount '"$CARDDIR"' with necessary modes (suid, dev)'
+
+    FSLABEL=`basename "$CARDDIR"`
+
+    msg 'Please choose or create a directory on '"$CARDDIR"' to install Debian to. This may be the root of the card.'
+
+    PDROOT=`savedir "$CARDDIR"`
+    if [ "$PDROOT" = "" ] ; then exit 1 ; fi
+    mkdir -p "$PDROOT" || die 'Failed to create '"$PDROOT"
+
+    if [ -e "$PDROOT/etc/debian_version" ]
+    then
+        UPDATE=yes
+        msg 'Debian installation already exists, updating.'
+    fi
+
+fi
+
+if [ "$UPDATE" = "no" ]
+then
+    # Select the version to install
+    DEBVERSION=`list 'Which version of Debian?' 'lenny' 'squeeze' 'sid' 'Other'`
+    if [ "$DEBVERSION" = "" -o "$DEBVERSION" = "Other" ]
+    then
+        DEBVERSION=`entry 'OK, what version then?' 'sid'`
+    fi
+    if [ "$DEBVERSION" = "" ] ; then exit 1 ; fi
+    
+    # Now do the debootstrapping
+    x-terminal-emulator -e "$PDDIR/deboowait" --arch armel "$DEBVERSION" "$PDROOT"
+    if [ ! -e "$PDROOT/etc/debian_version" ]
+    then
+        die 'Failed to install Debian.'
+    fi
+fi
+
+# Make it mountable
+echo '#!/bin/bash
+cd "`dirname $0`"
+
+pts="dev dev/shm dev/pts proc sys lib/modules"
+
+if [ ! -e proc/version ]
+then
+    for i in $pts; do mount --bind /$i $i; done
+    mount --bind /home home/pandome
+    mount --bind /var/run pandvarrun
+    mount --bind /var/tmp tmp
+fi
+if [ "$1" ]
+then
+    exec chroot . "$@"
+else
+    exec chroot . su -
+fi' > "$PDROOT/mount.sh"
+chmod 0755 "$PDROOT/mount.sh" || die 'Failed to set up mount.sh'
+
+# Redirect things from the host
+if [ "$UPDATE" = "yes" ]
+then
+    # Remove no-longer used redirects
+    rm -f "$PDROOT/etc/pandetc"
+fi
+mkdir -p "$PDROOT/pandvarrun" "$PDROOT/home/pandome" || die 'Failed to create the pandvarrun or pandome directories.'
+ln -sf ../pandvarrun/resolv.conf "$PDROOT/etc/resolv.conf" || die 'Failed to redirect resolv.conf'
+mkdir -p "$PDROOT/var/run" || die 'Failed to create /var/run'
+ln -sf ../../pandvarrun/ppp "$PDROOT/var/run/ppp" || die 'Failed to redirect /var/run/ppp'
+
+if [ "$UPDATE" = "no" ]
+then
+    # Setting up root
+    msg 'Now setting the Debian root password.'
+    x-terminal-emulator -e "$PDROOT/mount.sh" passwd
+
+    # Add the user
+    msg 'Now adding your user to the fresh Debian install.'
+    "$PDROOT/mount.sh" addgroup "$PRESUUSER" --gid "$PRESUGID" || warning 'Failed to add usergroup.'
+    x-terminal-emulator -e "$PDROOT/mount.sh" adduser "$PRESUUSER" --uid "$PRESUUID" --gid "$PRESUGID"
+fi
+
+# Make sure the user can use X and audio
+ln -sf ../pandome/"$PRESUUSER"/.Xauthority "$PDROOT/home/$PRESUUSER/.Xauthority"
+"$PDROOT/mount.sh" adduser "$PRESUUSER" audio
+
+# Set up the repositories
+msg 'Now setting up repositories and installing packages.'
+if [ "$UPDATE" = "no" ]
+then
+    echo 'deb http://ftp.us.debian.org/debian/ '"$DEBVERSION"' main contrib non-free
+deb-src http://ftp.us.debian.org/debian/ '"$DEBVERSION"' main contrib non-free' > /tmp/$$.sourcelist
+    if [ -e "$PDROOT/etc/apt/sources.list.d" ]
+    then
+        mv /tmp/$$.sourcelist "$PDROOT/etc/apt/sources.list.d/debian.list" || die 'Failed to install debian.list'
+    else
+        cat /tmp/$$.sourcelist >> "$PDROOT/etc/apt/sources.list" || die 'Failed to set up sources.list'
+        rm -f /tmp/$$.sourcelist
+    fi
+fi
+x-terminal-emulator -e "$PDROOT/mount.sh" aptitude update
+
+# Install packages
+while [ ! -e "$PDROOT/usr/bin/lxpanel" -o ! -e "$PDROOT/usr/bin/lxterminal" -o ! -e "$PDROOT/usr/bin/killall" -o ! -e "$PDROOT/usr/sbin/synaptic" ]
+do
+    x-terminal-emulator -e "$PDROOT/mount.sh" aptitude -y install lxpanel lxterminal psmisc synaptic
+done
+tar -C "$PDROOT/home/$PRESUUSER" -xf "$PDDIR/lxpanel-config.tar.gz" || die 'Failed to extract lxpanel configuration files.'
+
+# And set up the launcher
+PNDDIR="/tmp/$$.pndd"
+mkdir -p "$CARDDIR/pandora/apps" || die 'Failed to create the launcher appdir.'
+PNDFILE="$CARDDIR/pandora/apps/$FSLABEL.pnd"
+mkdir -p "$PNDDIR" || die 'Failed to create the launcher directory.'
+echo '#!/bin/bash
+LB="'"$LB"'"
+LBFILE="'"$LBFILE"'"
+CARDDIR="'"$CARDDIR"'"
+PDROOT="'"$PDROOT"'"
+DEBUSER="'"$PRESUUSER"'"
+
+# Make sure the modes are right
+if [ ! "$LB" ]
+then
+    mount -o remount,suid,dev "$CARDDIR"
+fi
+
+# Mount it
+if [ ! -e "$PDROOT/etc/debian_version" ]
+then
+    if [ "$LB" ]
+    then
+        mkdir -p "$PDROOT"
+        mount -o loop,noatime "$LBFILE" "$PDROOT"
+    fi
+fi
+
+if [ ! -e "$PDROOT/etc/debian_version" ]
+then
+    zenity --error --text="Unexpected failure mounting Debian"
+fi
+
+"$PDROOT/mount.sh" killall lxpanel
+exec "$PDROOT/mount.sh" su "$DEBUSER" -c lxpanel' > "$PNDDIR/launcher"
+
+echo '#!/bin/sh
+if [ ! "$XAUTHORITY" ]
+then
+    XAUTHORITY="$HOME/.Xauthority"
+    export XAUTHORITY
+fi
+exec gksudo ./launcher' > "$PNDDIR/launcher.sosume"
+
+chmod 0755 "$PNDDIR/launcher" "$PNDDIR/launcher.sosume"
+
+# And the PXML
+echo '<?xml version="1.0" encoding="UTF-8"?>
+<PXML xmlns="http://openpandora.org/namespaces/PXML" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="PXML_schema.xsd">
+  <application id="PanDebian-'"$FSLABEL"'-'"$RANDOM"'">
+    <title lang="en_US">PanDebian '"$FSLABEL"'</title>
+    <exec command="launcher.sosume"/>
+    <author name="Gregor Richards"/>
+    <version major="1" minor="0" release="0" build="0"/>
+    <osversion major="1" minor="0" release="0" build="0"/>
+    <categories>
+      <category name="System">
+        <subcategory name="PanDebian"/>
+      </category>
+    </categories>
+  </application>
+</PXML>' > "$PNDDIR/PXML.xml"
+
+# Now make the PND
+/usr/sbin/mksquashfs "$PNDDIR" /tmp/$$.squash || die 'Failed to create the PND squashfs.'
+cat /tmp/$$.squash "$PNDDIR/PXML.xml" > "$PNDFILE" || die 'Failed to create the PND file.'
+
+# Launch it
+(
+    "$PNDDIR/launcher"
+    rm -rf "$PNDDIR" /tmp/$$.squash
+) &
+
+msg 'PanDebian is now installed. The menu in the upper left corner is a Debian menu, and the synaptic package manager has been provided for your convenience. You may relaunch it at any time using the "PanDebian '"$FSLABEL"'" application which has now been installed to the "System" menu. Please note that at present the only way to disengage a PanDebian system is to reboot.'

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PXML xmlns="http://openpandora.org/namespaces/PXML" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="PXML_schema.xsd">
+  <application id="PanDebian">
+
+    <title lang="en_US">PanDebian Installer</title>
+ 
+    <exec command="pandebian.sosume"/>
+ 
+    <author name="Gregor Richards"/>
+ 
+    <version major="0" minor="2" release="0" build="0"/>
+    <osversion major="1" minor="0" release="0" build="0"/>
+ 
+    <categories>
+      <category name="System">
+        <subcategory name="PanDebian"/>
+      </category>
+    </categories>
+  </application>
+
+  <application id="PanDebian-Share">
+
+    <title lang="en_US">PanDebian Share</title>
+ 
+    <exec command="pandebian-share.sosume"/>
+ 
+    <author name="Gregor Richards"/>
+ 
+    <version major="0" minor="2" release="0" build="0"/>
+    <osversion major="1" minor="0" release="0" build="0"/>
+ 
+    <categories>
+      <category name="System">
+        <subcategory name="PanDebian"/>
+      </category>
+    </categories>
+  </application>
+</PXML>

@@ -1,0 +1,12 @@
+#!/bin/sh
+if [ ! "$XAUTHORITY" ]
+then
+    XAUTHORITY="$HOME/.Xauthority"
+    export XAUTHORITY
+fi
+
+PRESUUSER="$USER"
+PRESUUID=`id -u`
+PRESUGID=`id -g`
+
+exec gksudo ./pandebian "$PRESUUSER" "$PRESUUID" "$PRESUGID"

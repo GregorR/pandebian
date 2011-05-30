@@ -1,0 +1,4 @@
+#!/bin/bash
+DIR=`dirname "$0"`
+DEBOOTSTRAP_DIR="$DIR/debootstrap" "$DIR/debootstrap/debootstrap" "$@"
+read JUNK
