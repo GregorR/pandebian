@@ -213,7 +213,7 @@ fi
 if [ "$UPDATE" = "no" ]
 then
     # Select the version to install
-    DEBVERSION=`list 'Which version of Debian?' 'lenny' 'squeeze' 'sid' 'Other'`
+    DEBVERSION=`list 'Which version of Debian?' 'lenny' 'squeeze' 'wheezy' 'sid' 'Other'`
     if [ "$DEBVERSION" = "" -o "$DEBVERSION" = "Other" ]
     then
         DEBVERSION=`entry 'OK, what version then?' 'sid'`
