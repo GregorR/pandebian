@@ -3,7 +3,7 @@ DEBOOTSTRAP_VERSION=1.0.32
 
 all: pandebian.pnd
 
-pandebian.pnd: $(CONT) PXML.xml
+pandebian.pnd: $(CONT) debootstrap.done PXML.xml
 	rm -rf pandebian.pnd.d
 	mkdir pandebian.pnd.d
 	cp -a $(CONT) pandebian.pnd.d/
@@ -11,18 +11,18 @@ pandebian.pnd: $(CONT) PXML.xml
 	cat PXML.xml >> pandebian.pnd
 	rm -rf pandebian.pnd.d/
 
-debootstrap: debootstrap/debootstrap
-	true
-
-debootstrap/debootstrap: debootstrap_$(DEBOOTSTRAP_VERSION)_all.deb
+debootstrap.done: debootstrap_$(DEBOOTSTRAP_VERSION)_all.deb
 	ar x debootstrap_$(DEBOOTSTRAP_VERSION)_all.deb data.tar.gz
 	tar zxf data.tar.gz
+	rm -rf debootstrap
 	mv usr/share/debootstrap .
 	mv usr/sbin/debootstrap debootstrap/
 	rm -rf usr
+	touch debootstrap.done
 
 %.deb:
 	wget http://ftp.us.debian.org/debian/pool/main/d/debootstrap/debootstrap_$(DEBOOTSTRAP_VERSION)_all.deb
 
 clean:
-	rm -rf pandebian.pnd.d/ pandebian.pnd data.tar.gz debootstrap
+	rm -rf pandebian.pnd.d/ pandebian.pnd
+	rm -rf data.tar.gz debootstrap debootstrap.done

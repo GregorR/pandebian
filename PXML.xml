@@ -6,7 +6,7 @@
  
     <exec command="pandebian.sosume"/>
  
-    <author name="Gregor Richards"/>
+    <author name="Gregor Richards" website="http://bitbucket.org/GregorR/pandebian/" />
  
     <version major="0" minor="2" release="0" build="0"/>
     <osversion major="1" minor="0" release="0" build="0"/>
@@ -26,7 +26,7 @@
  
     <author name="Gregor Richards"/>
  
-    <version major="0" minor="2" release="0" build="0"/>
+    <version major="0" minor="3" release="0" build="0"/>
     <osversion major="1" minor="0" release="0" build="0"/>
  
     <categories>
