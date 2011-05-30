@@ -9,6 +9,7 @@ pandebian.pnd: $(CONT) debootstrap.done PXML.xml
 	cp -a $(CONT) debootstrap pandebian.pnd.d/
 	mksquashfs pandebian.pnd.d/ pandebian.pnd
 	cat PXML.xml >> pandebian.pnd
+	cat icon.png >> pandebian.pnd
 	rm -rf pandebian.pnd.d/
 
 debootstrap.done: debootstrap_$(DEBOOTSTRAP_VERSION)_all.deb

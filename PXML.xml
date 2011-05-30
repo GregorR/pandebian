@@ -1,15 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PXML xmlns="http://openpandora.org/namespaces/PXML" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="PXML_schema.xsd">
-  <application id="PanDebian">
+  <package id="PanDebian">
+    <titles>
+      <title lang="en_US">PanDebian</title>
+    </titles>
+    <title lang="en_US">PanDebian</title>
 
+    <descriptions>
+      <description lang="en_US">Install Debian concurrently and coöperatively to the pre-installed Angström distribution, so you can use both at once.</description>
+    </descriptions>
+
+    <author name="Gregor Richards" website="http://bitbucket.org/GregorR/pandebian/" />
+   
+    <version major="0" minor="3" release="0" build="0" type="release"/>
+    <osversion major="1" minor="0" release="0" build="0"/>
+  </package>
+
+  <application id="PanDebian">
     <title lang="en_US">PanDebian Installer</title>
+    <description lang="en_US">Debian OS installer and updater for existing PanDebian installs.</description>
+    <author name="Gregor Richards" website="http://bitbucket.org/GregorR/pandebian/" />
+    <version major="0" minor="3" release="0" build="0" type="release"/>
  
     <exec command="pandebian.sosume"/>
- 
-    <author name="Gregor Richards" website="http://bitbucket.org/GregorR/pandebian/" />
- 
-    <version major="0" minor="2" release="0" build="0"/>
-    <osversion major="1" minor="0" release="0" build="0"/>
  
     <categories>
       <category name="System">
@@ -19,16 +32,13 @@
   </application>
 
   <application id="PanDebian-Share">
-
     <title lang="en_US">PanDebian Share</title>
+    <description lang="en_US">Tool to share Angstrom-mounted filesystems with Debian.</description>
+    <author name="Gregor Richards" website="http://bitbucket.org/GregorR/pandebian/" />
+    <version major="0" minor="3" release="0" build="0" type="release"/>
  
     <exec command="pandebian-share.sosume"/>
- 
-    <author name="Gregor Richards"/>
- 
-    <version major="0" minor="3" release="0" build="0"/>
-    <osversion major="1" minor="0" release="0" build="0"/>
- 
+   
     <categories>
       <category name="System">
         <subcategory name="PanDebian"/>
