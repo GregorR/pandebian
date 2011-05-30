@@ -1,4 +1,4 @@
-CONT=chksize debootstrap deboowait lxpanel-config.tar.gz pandebian pandebian.sosume pandebian-share pandebian-share.sosume
+CONT=chksize deboowait lxpanel-config.tar.gz pandebian pandebian.sosume pandebian-share pandebian-share.sosume
 DEBOOTSTRAP_VERSION=1.0.32
 
 all: pandebian.pnd
@@ -6,7 +6,7 @@ all: pandebian.pnd
 pandebian.pnd: $(CONT) debootstrap.done PXML.xml
 	rm -rf pandebian.pnd.d
 	mkdir pandebian.pnd.d
-	cp -a $(CONT) pandebian.pnd.d/
+	cp -a $(CONT) debootstrap pandebian.pnd.d/
 	mksquashfs pandebian.pnd.d/ pandebian.pnd
 	cat PXML.xml >> pandebian.pnd
 	rm -rf pandebian.pnd.d/
