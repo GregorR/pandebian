@@ -24,6 +24,14 @@ debootstrap.done: debootstrap_$(DEBOOTSTRAP_VERSION)_all.deb
 %.deb:
 	wget http://ftp.us.debian.org/debian/pool/main/d/debootstrap/debootstrap_$(DEBOOTSTRAP_VERSION)_all.deb
 
+lxpanel-config.tar.gz:
+	mkdir -p .config/lxpanel/default/panels
+	cp lxpanel/config .config/lxpanel/default/config
+	cp lxpanel/panel .config/lxpanel/default/panels/panel
+	tar zcf lxpanel-config.tar.gz .config/
+	rm -rf .config
+
 clean:
 	rm -rf pandebian.pnd.d/ pandebian.pnd
 	rm -rf data.tar.gz debootstrap debootstrap.done
+	rm -rf .config lxpanel-config.tar.gz
